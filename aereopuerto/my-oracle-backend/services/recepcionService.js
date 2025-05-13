@@ -5,8 +5,12 @@ export const getRecepciones = async () => {
   let connection;
   try {
     connection = await oracledb.getConnection(oracleConfig);
-    const result = await connection.execute("SELECT * FROM AER_RECEPCION");
-    return result.rows;
+    const result = await connection.execute(
+      `BEGIN PKG_RECEPCION.LISTAR_RECEPCIONES(:cursor); END;`,
+      { cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT } }
+    );
+    const rows = await result.outBinds.cursor.getRows();
+    return rows;
   } catch (error) {
     console.error("Error al obtener las recepciones:", error);
     throw error;
@@ -25,7 +29,7 @@ export const createRecepcion = async (data) => {
   try {
     connection = await oracledb.getConnection(oracleConfig);
     const result = await connection.execute(
-      "INSERT INTO AER_RECEPCION (REC_RECEPCION, PAS_PASAJERO, VUE_VUELO, REC_FECHA, REC_ESTADO) VALUES (:REC_RECEPCION, :PAS_PASAJERO, :VUE_VUELO, :REC_FECHA, :REC_ESTADO)",
+      `BEGIN PKG_RECEPCION.CREAR_RECEPCION(:REC_RECEPCION, :PAS_PASAJERO, :VUE_VUELO, :REC_FECHA, :REC_ESTADO); END;`,
       { REC_RECEPCION: Number(REC_RECEPCION), PAS_PASAJERO: Number(PAS_PASAJERO), VUE_VUELO: Number(VUE_VUELO), REC_FECHA, REC_ESTADO },
       { autoCommit: true }
     );
@@ -46,11 +50,14 @@ export const updateRecepcion = async (id, data) => {
   try {
     connection = await oracledb.getConnection(oracleConfig);
     const result = await connection.execute(
-      `UPDATE AER_RECEPCION 
-       SET PAS_PASAJERO = :PAS_PASAJERO, VUE_VUELO = :VUE_VUELO, 
-           REC_FECHA = :REC_FECHA, REC_ESTADO = :REC_ESTADO 
-       WHERE REC_RECEPCION = :REC_RECEPCION`,
-      { PAS_PASAJERO: Number(PAS_PASAJERO), VUE_VUELO: Number(VUE_VUELO), REC_FECHA, REC_ESTADO, REC_RECEPCION: id },
+      `BEGIN PKG_RECEPCION.ACTUALIZAR_RECEPCION(:REC_RECEPCION, :PAS_PASAJERO, :VUE_VUELO, :REC_FECHA, :REC_ESTADO); END;`,
+      {
+        REC_RECEPCION: id,
+        PAS_PASAJERO: Number(PAS_PASAJERO),
+        VUE_VUELO: Number(VUE_VUELO),
+        REC_FECHA,
+        REC_ESTADO,
+      },
       { autoCommit: true }
     );
     return result.rowsAffected;
@@ -69,7 +76,7 @@ export const deleteRecepcion = async (id) => {
   try {
     connection = await oracledb.getConnection(oracleConfig);
     const result = await connection.execute(
-      `DELETE FROM AER_RECEPCION WHERE REC_RECEPCION = :REC_RECEPCION`,
+      `BEGIN PKG_RECEPCION.BORRAR_RECEPCION(:REC_RECEPCION); END;`,
       { REC_RECEPCION: id },
       { autoCommit: true }
     );

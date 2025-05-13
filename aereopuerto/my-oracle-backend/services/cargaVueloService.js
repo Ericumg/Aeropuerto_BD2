@@ -5,8 +5,12 @@ export const getCargasVuelo = async () => {
   let connection;
   try {
     connection = await oracledb.getConnection(oracleConfig);
-    const result = await connection.execute("SELECT CAR_VUELO_ID, CAR_CARGA, VUE_VUELO FROM AER_CARGA_VUELO");
-    return result.rows;
+    const result = await connection.execute(
+      `BEGIN PKG_CARGA_VUELO.LISTAR_CARGAS_VUELO(:cursor); END;`,
+      { cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT } }
+    );
+    const rows = await result.outBinds.cursor.getRows();
+    return rows;
   } catch (error) {
     console.error("Error al obtener las cargas de vuelo:", error);
     throw error;
@@ -23,9 +27,12 @@ export const createCargaVuelo = async (data) => {
   try {
     connection = await oracledb.getConnection(oracleConfig);
     const result = await connection.execute(
-      `INSERT INTO AER_CARGA_VUELO (CAR_VUELO_ID, CAR_CARGA, VUE_VUELO) 
-       VALUES (:CAR_VUELO_ID, :CAR_CARGA, :VUE_VUELO)`,
-      { CAR_VUELO_ID: Number(CAR_VUELO_ID), CAR_CARGA: Number(CAR_CARGA), VUE_VUELO: Number(VUE_VUELO) },
+      `BEGIN PKG_CARGA_VUELO.CREAR_CARGA_VUELO(:CAR_VUELO_ID, :CAR_CARGA, :VUE_VUELO); END;`,
+      {
+        CAR_VUELO_ID: Number(CAR_VUELO_ID),
+        CAR_CARGA: Number(CAR_CARGA),
+        VUE_VUELO: Number(VUE_VUELO),
+      },
       { autoCommit: true }
     );
     return result.rowsAffected;
@@ -45,10 +52,12 @@ export const updateCargaVuelo = async (id, data) => {
   try {
     connection = await oracledb.getConnection(oracleConfig);
     const result = await connection.execute(
-      `UPDATE AER_CARGA_VUELO 
-       SET CAR_CARGA = :CAR_CARGA, VUE_VUELO = :VUE_VUELO 
-       WHERE CAR_VUELO_ID = :CAR_VUELO_ID`,
-      { CAR_CARGA: Number(CAR_CARGA), VUE_VUELO: Number(VUE_VUELO), CAR_VUELO_ID: id },
+      `BEGIN PKG_CARGA_VUELO.ACTUALIZAR_CARGA_VUELO(:CAR_VUELO_ID, :CAR_CARGA, :VUE_VUELO); END;`,
+      {
+        CAR_VUELO_ID: id,
+        CAR_CARGA: Number(CAR_CARGA),
+        VUE_VUELO: Number(VUE_VUELO),
+      },
       { autoCommit: true }
     );
     return result.rowsAffected;
@@ -67,8 +76,8 @@ export const deleteCargaVuelo = async (id) => {
   try {
     connection = await oracledb.getConnection(oracleConfig);
     const result = await connection.execute(
-      `DELETE FROM AER_CARGA_VUELO WHERE CAR_VUELO_ID = :CAR_VUELO`,
-      { CAR_VUELO: id },
+      `BEGIN PKG_CARGA_VUELO.BORRAR_CARGA_VUELO(:CAR_VUELO_ID); END;`,
+      { CAR_VUELO_ID: id },
       { autoCommit: true }
     );
     return result.rowsAffected;
